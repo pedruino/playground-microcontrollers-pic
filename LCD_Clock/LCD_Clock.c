@@ -52,7 +52,6 @@ void setup(){
     minute = 0;
     second = 0;
     timer_milliseconds = 0;
-    blink = 0;
 }
 
 
@@ -81,13 +80,8 @@ void increment_second(){
         increment_minute();
     }
 }
-void blink_separator(unsigned char row, unsigned char column){
-    if(blink == 1)
-        lcd_out(row, column, ":");
-}
-void loop(){
 
-    
+void loop(){
     if(RB0_bit == LOW){
         delay(100);
         if(RB0_bit == LOW){
@@ -117,8 +111,7 @@ void loop(){
         lcd_out(2, 15, ltrim(txt));
 
     //separador
-//    lcd_out(2, 14, ":");
-    blink_separator(2, 14);
+    lcd_out(2, 14, ":");
 
     bytetostr(minute, txt);
     if(minute < 10)
@@ -130,8 +123,7 @@ void loop(){
         lcd_out(2, 12, ltrim(txt));
 
     //separador
-//    lcd_out(2, 11, ":");
-    blink_separator(2, 11);
+    lcd_out(2, 11, ":");
     
     bytetostr(hour, txt);
     if(hour < 10)
@@ -141,7 +133,7 @@ void loop(){
     }
     else
         lcd_out(2, 9, ltrim(txt));
-    
+    /*
     if(timer_milliseconds < 100){
         timer_milliseconds++;
     }else{
@@ -152,14 +144,7 @@ void loop(){
         else
             blink = 1;
     }
-    
-    //bytetostr(timer_milliseconds, txt);
-    //lcd_out(1, 1, ltrim(txt));
-        
-    //lcd_out(1, 8, SEPARATOR);
-    //lcd_out(1, 9, minutos);
-    //lcd_out(1, 11, SEPARATOR);
-    //lcd_out(1, 12, segundos);
+    */
 }
 
 
