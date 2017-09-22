@@ -35,7 +35,8 @@ void setup(){
     INTCON2 = 0; //liga o resistor pull up
     ADCON1 = 15; //Portas digitais
     CMCON = 7; //desliga comparadores
-    //coeficiente de cagaço (garantir que tudo incia desligado)
+    
+    //Inicializa todas as portas desligadas
     PORTA = 0; //
     PORTB = 0; //
     PORTC = 0; //
@@ -168,7 +169,7 @@ void interrupt(){
     if (TMR0IF_bit){                 //overflow em 0-255
         TMR0IF_bit=0;                //
         reset_timer0();
-        counter++;                   //para cada interrpção do TIMER1 incrementa a variável contagem
+        counter++;                   //para cada interrupção do TIMER1 incrementa a variável contagem
         if (counter == 100){         //counter == time ~> passou 1 segundo
             increment_second();
             counter = 0;
