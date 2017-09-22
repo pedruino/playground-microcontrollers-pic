@@ -22,37 +22,11 @@ int timer_milliseconds;
 char txt[4];
 unsigned counter;
 
-void delay(unsigned int milliseconds);
-
-void setup(){
-    //SETUP microcontrolador
-    TRISA = 48; //RA4 e RA5 com entrada
-    TRISB = 15; //RB0 ..RB3
-    TRISC = 0; //saída
-    TRISD = 0; //saída
-    TRISE = 0; //saída
-    //obrigatório
-    INTCON2 = 0; //liga o resistor pull up
-    ADCON1 = 15; //Portas digitais
-    CMCON = 7; //desliga comparadores
-    
-    //Inicializa todas as portas desligadas
-    PORTA = 0; //
-    PORTB = 0; //
-    PORTC = 0; //
-    PORTD = 0; //
-    PORTE = 0; //
-
-    //LCD initialize
-    lcd_init();
-    lcd_cmd(_LCD_CLEAR);
-    lcd_cmd(_LCD_CURSOR_OFF);
-
-    //inicializa vars
-    hour = 0;
-    minute = 0;
-    second = 0;
-    timer_milliseconds = 0;
+void delay(unsigned int milliseconds){
+    while(milliseconds > 0){
+        delay_ms(1);
+        milliseconds--;
+    }
 }
 
 void increment_hour(){
@@ -123,7 +97,6 @@ void display_time(){
     display_separator();
     display_second();
 }
-
 void adjust_clock(){
     //Horas
     if(RB0_bit == LOW){
@@ -150,11 +123,6 @@ void adjust_clock(){
     }
 }
 
-void loop(){
-    adjust_clock();
-    display_time();
-}
-
 void reset_timer0(){
     //inicializa os valores de timer zero
     //20 Mhz (frequência PIC) / 4 (prescaler) = 5Mhz
@@ -163,7 +131,6 @@ void reset_timer0(){
     TMR0H = 60;  //0x3C
     TMR0L = 176; //0xB0
 }
-
 void interrupt(){
     GIE_bit = 0;
     if (TMR0IF_bit){                 //overflow em 0-255
@@ -178,23 +145,49 @@ void interrupt(){
     GIE_bit = 1; 
 }
 
+void setup(){
+    //SETUP microcontrolador
+    TRISA = 48; //RA4 e RA5 com entrada
+    TRISB = 15; //RB0 ..RB3
+    TRISC = 0; //saída
+    TRISD = 0; //saída
+    TRISE = 0; //saída
+    //obrigatório
+    INTCON2 = 0; //liga o resistor pull up
+    ADCON1 = 15; //Portas digitais
+    CMCON = 7; //desliga comparadores
+    
+    //Inicializa todas as portas desligadas
+    PORTA = 0; //
+    PORTB = 0; //
+    PORTC = 0; //
+    PORTD = 0; //
+    PORTE = 0; //
+
+    //LCD initialize
+    lcd_init();
+    lcd_cmd(_LCD_CLEAR);
+    lcd_cmd(_LCD_CURSOR_OFF);
+
+    //inicializa vars
+    hour = 0;
+    minute = 0;
+    second = 0;
+    timer_milliseconds = 0;
+}
+void loop(){
+    adjust_clock();
+    display_time();
+}
 void main() {
     setup();
 
+    //configura interrupções
     INTCON = 0;     //desabilita interrupções
-    T0CON = 136;    //desliga todos os controles do tmr0 (em 16bits)
-    
-    reset_timer0();
-
+    T0CON = 136;    //desliga todos os controles do tmr0 (em 16bits)    
+    reset_timer0(); //inicializa o timer0
     TMR0IE_bit = 1; //liga interrupção do tmr0 (começa contar)
     GIE_bit = 1;    //liga o sistema de interrupções
 
     while(1) loop();
-}
-
-void delay(unsigned int milliseconds){
-    while(milliseconds > 0){
-        delay_ms(1);
-        milliseconds--;
-    }
 }
