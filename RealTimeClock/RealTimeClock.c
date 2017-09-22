@@ -36,6 +36,7 @@ void increment_hour(){
         hour = 0;
     }
 }
+
 void increment_minute(){
     if(minute < 59){
         minute++;
@@ -44,6 +45,7 @@ void increment_minute(){
         increment_hour();
     }
 }
+
 void increment_second(){
     if(second < 59){
         second++;
@@ -59,6 +61,7 @@ void display_separator(){
     else    
         lcd_out_cp(" ");
 }
+
 void display_hour(){
     bytetostr(hour, txt);
     if(hour < 10)
@@ -69,6 +72,7 @@ void display_hour(){
     else
         lcd_out(2, 9, ltrim(txt));
 }
+
 void display_minute(){
     bytetostr(minute, txt);
     if(minute < 10)
@@ -79,6 +83,7 @@ void display_minute(){
     else
         lcd_out(2, 12, ltrim(txt));
 }
+
 void display_second(){
     bytetostr(second, txt);
     if(second < 10) 
@@ -97,6 +102,7 @@ void display_time(){
     display_separator();
     display_second();
 }
+
 void adjust_clock(){
     //Horas
     if(RB0_bit == LOW){
@@ -131,6 +137,7 @@ void reset_timer0(){
     TMR0H = 60;  //0x3C
     TMR0L = 176; //0xB0
 }
+
 void interrupt(){
     GIE_bit = 0;
     if (TMR0IF_bit){                 //overflow em 0-255
@@ -175,10 +182,12 @@ void setup(){
     second = 0;
     timer_milliseconds = 0;
 }
+
 void loop(){
     adjust_clock();
     display_time();
 }
+
 void main() {
     setup();
 
