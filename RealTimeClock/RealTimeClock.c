@@ -192,8 +192,8 @@ void main() {
     setup();
 
     //configura interrupções
+    T0CON = 136;    //desliga todos os controles do tmr0 (em 16bits)
     INTCON = 0;     //desabilita interrupções
-    T0CON = 136;    //desliga todos os controles do tmr0 (em 16bits)    
     reset_timer0(); //inicializa o timer0
     TMR0IE_bit = 1; //liga interrupção do tmr0 (começa contar)
     GIE_bit = 1;    //liga o sistema de interrupções
