@@ -1,5 +1,7 @@
 #define HIGH 1
 #define LOW 0
+#define AUTO_MODE 0
+#define SET_MODE 1
 
 //LCD Setup
 sbit LCD_RS at RE1_bit;
@@ -18,10 +20,14 @@ sbit LCD_D7_Direction at TRISB7_bit;
 
 //vars
 char txt[4], year_txt[7];
+const unsigned short days_of_month[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+char* days_of_week[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Sex", "Sat"};
 unsigned char hour, minute, second;
 unsigned char day_month, day_week, month;
+unsigned short last_month_day;
 unsigned year;
 unsigned interrupt_counter;
+unsigned char MODE = AUTO_MODE;
 
 /* Prototypes */
 void loop();
@@ -43,6 +49,7 @@ void increment_year();
 
 void timer0_init();
 char format_time(unsigned char time);
+int is_leap_year();
 void delay(unsigned milliseconds);
 
 void setup(){
@@ -139,6 +146,7 @@ void set_clock(){
     if(RB2_bit == LOW){
         delay(100);
         if(RB2_bit == LOW){
+            MODE = SET_MODE;
             increment_hour();
         }
     }
@@ -147,6 +155,7 @@ void set_clock(){
     if(RB1_bit == LOW){
         delay(100);
         if(RB1_bit == LOW){
+            MODE = SET_MODE;
             increment_minute();
         }
     }
@@ -155,6 +164,7 @@ void set_clock(){
     if(RB0_bit == LOW){
         delay(100);
         if(RB0_bit == LOW){
+            MODE = SET_MODE;
             increment_second();
         }
     }
@@ -166,7 +176,8 @@ void increment_hour(){
     else
     {
         hour = 0;
-        increment_day_of_month();
+        if(MODE != SET_MODE)
+            increment_day_of_month();
     }
 }
 
@@ -175,7 +186,8 @@ void increment_minute(){
         minute++;
     else{
         minute = 0;
-        increment_hour();
+        if(MODE != SET_MODE)
+            increment_hour();
     }
 }
 
@@ -184,28 +196,31 @@ void increment_second(){
         second++;
     else{
         second = 0;
-        increment_minute();
+        if(MODE != SET_MODE)
+            increment_minute();
     }
 }
 
 /* Funcoes :: Data */
-void set_date(){
-    //Dia do mes
-    if(RA5_bit == HIGH){
+void set_date(){    
+    if(RA5_bit == HIGH){         //Dia
         delay(100);
-        if(RA5_bit == HIGH && RA4_bit == LOW){
+        if(RA5_bit == HIGH){
+            MODE = SET_MODE;
             increment_day_of_month();
-        }else{
-            increment_day_of_week();
         }
-    }else if(RA4_bit == HIGH){          //Mes
+    }
+    if(RA4_bit == HIGH){         //Mes
         delay(100);
         if(RA4_bit == HIGH){
+            MODE = SET_MODE;
             increment_month();
         }
-    }else if(RB3_bit == LOW){          //Ano
+    }
+    if(RB3_bit == LOW){          //Ano
         delay(100);
         if(RB3_bit == LOW){
+            MODE = SET_MODE;
             increment_year();
         }
     }    
@@ -213,7 +228,8 @@ void set_date(){
 
 void display_date(){
     //dia
-    lcd_out(1, 1, format_time(day_week));    
+    lcd_out(1, 1, days_of_week[day_week]);    
+    lcd_out_cp(" - ");
     lcd_out(1, 7, format_time(day_month));    
     //separador
     lcd_chr_cp(47);    
@@ -226,12 +242,20 @@ void display_date(){
     lcd_out_cp(ltrim(year_txt));
 }
 
-void increment_day_of_month(){
-    if(day_month < 31) //??date.
+void increment_day_of_month(){    
+    last_month_day = days_of_month[month-1];
+    if(month == 2 && is_leap_year())
+        last_month_day  +=1;
+    
+    if(day_month < last_month_day)
+    {
         day_month++;
+        increment_day_of_week();
+    }
     else{
         day_month = 1;
-        increment_month();
+        if(MODE != SET_MODE)
+            increment_month();
     }
 }
 
@@ -247,7 +271,8 @@ void increment_month(){
        month++;
     else{
         month = 1;
-        increment_year();
+        if(MODE != SET_MODE)
+            increment_year();
     }
 }
 
@@ -274,6 +299,16 @@ char format_time(unsigned char time){
         txt[1] = '0';        
     }
     return ltrim(txt);
+}
+
+int is_leap_year(){
+    if(year % 4 == 0){
+        if(year % 100 == 0)
+            return (year % 400 == 0);
+        
+        return 1;
+    }
+    return 0;
 }
 
 void delay(unsigned int milliseconds){
