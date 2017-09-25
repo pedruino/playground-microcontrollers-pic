@@ -21,7 +21,7 @@ sbit LCD_D7_Direction at TRISB7_bit;
 //vars
 char txt[4], year_txt[7];
 const unsigned short days_of_month[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-char* days_of_week[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Sex", "Sat"};
+char* days_of_week[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 unsigned char hour, minute, second;
 unsigned char day_month, day_week, month;
 unsigned short last_month_day;
