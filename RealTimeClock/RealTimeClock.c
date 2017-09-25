@@ -17,97 +17,128 @@ sbit LCD_D6_Direction at TRISB6_bit;
 sbit LCD_D7_Direction at TRISB7_bit;
 
 //vars
-int hour, minute, second;
-int timer_milliseconds;
-char txt[4];
-unsigned counter;
+char txt[4], year_txt[7];
+unsigned char hour, minute, second;
+unsigned char day_month, day_week, month;
+unsigned year;
+unsigned interrupt_counter;
 
-void delay(unsigned int milliseconds){
-    while(milliseconds > 0){
-        delay_ms(1);
-        milliseconds--;
+/* Prototypes */
+void loop();
+void setup();
+
+void set_clock();
+void display_time();
+void increment_hour();
+void increment_minute();
+void increment_second();
+
+void set_date();
+void display_date();
+void increment_day_of_month();
+void increment_day_of_week();
+void increment_month();
+void increment_year();
+
+
+void timer0_init();
+char format_time(unsigned char time);
+void delay(unsigned milliseconds);
+
+void setup(){
+    //Configuracao obrigatoria
+    INTCON2 = 0;  //Liga o resistor pull up
+    ADCON1 = 15;  //Portas digitais
+    CMCON = 7;    //Desliga comparadores
+
+    //Setup do PIC (baseado na configuracao da placa)
+    TRISA = 48;   //RA4 e RA5 com entrada
+    TRISB = 15;   //RB0 ..RB3
+    TRISC = 0;    //saida
+    TRISD = 0;    //saida
+    TRISE = 0;    //saida
+    
+    //Inicializa todas as portas desligadas
+    PORTA = 0; //
+    PORTB = 0; //
+    PORTC = 0; //
+    PORTD = 0; //
+    PORTE = 0; //
+
+    //Incializacao do LCD
+    lcd_init();
+    lcd_cmd(_LCD_CLEAR);
+    lcd_cmd(_LCD_CURSOR_OFF);
+
+    //Variaveis
+    hour = 0;
+    minute = 0;
+    second = 0;
+
+    day_week = 0;
+    day_month = 24;
+    month = 9;
+    year = 2017;
+
+    interrupt_counter = 0;
+
+
+    //Configuracao de interrupcoes
+    T0CON = 136;    //desliga todos os controles do tmr0 (em 16bits)
+    INTCON = 0;     //desabilita interrupções
+    timer0_init(); //inicializa o timer0
+    TMR0IE_bit = 1; //liga interrupção do tmr0 (começa contar)
+    GIE_bit = 1;    //liga o sistema de interrupções
+}
+int i = 0;
+void loop(){
+    set_date();
+    set_clock();
+
+    display_date();    
+    display_time();
+}
+
+void main() {
+    setup();
+    while(1) loop();
+}
+
+void interrupt(){
+    GIE_bit = 0;
+    if (TMR0IF_bit){
+        TMR0IF_bit=0;                
+        
+        timer0_init();
+
+        interrupt_counter++;                   //para cada interrupcao do TIMER1 incrementa a variavel contagem
+        if (interrupt_counter == 100){         //counter == time ~> passou 1 segundo
+            increment_second();
+            interrupt_counter = 0;
+        }
     }
+    GIE_bit = 1; 
 }
 
-void increment_hour(){
-    if(hour < 23){
-        hour++;
-    }else{
-        hour = 0;
-    }
-}
-
-void increment_minute(){
-    if(minute < 59){
-        minute++;
-    }else{
-        minute = 0;
-        increment_hour();
-    }
-}
-
-void increment_second(){
-    if(second < 59){
-        second++;
-    }else{
-        second = 0;
-        increment_minute();
-    }
-}
-
-void display_separator(){
-    if(counter > 40)
-        lcd_out_cp(":");
-    else    
-        lcd_out_cp(" ");
-}
-
-void display_hour(){
-    bytetostr(hour, txt);
-    if(hour < 10)
-    {
-        lcd_out(2, 9, "0");
-        lcd_out(2, 10, ltrim(txt));
-    }
-    else
-        lcd_out(2, 9, ltrim(txt));
-}
-
-void display_minute(){
-    bytetostr(minute, txt);
-    if(minute < 10)
-    {
-        lcd_out(2, 12, "0");
-        lcd_out(2, 13, ltrim(txt));
-    }
-    else
-        lcd_out(2, 12, ltrim(txt));
-}
-
-void display_second(){
-    bytetostr(second, txt);
-    if(second < 10) 
-    {
-        lcd_out(2, 15, "0");
-        lcd_out(2, 16, ltrim(txt));
-    }
-    else
-        lcd_out(2, 15, ltrim(txt));
-}
-
+/* Funcoes :: Relogio */
 void display_time(){
-    display_hour();
-    display_separator();
-    display_minute();
-    display_separator();
-    display_second();
+    //horas
+    lcd_out(2, 9, format_time(hour));
+    //separador
+    if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
+    //minutos
+    lcd_out_cp(format_time(minute));
+    //separador
+    if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
+    //segundos
+    lcd_out_cp(format_time(second));
 }
 
-void adjust_clock(){
+void set_clock(){
     //Horas
-    if(RB0_bit == LOW){
+    if(RB2_bit == LOW){
         delay(100);
-        if(RB0_bit == LOW){
+        if(RB2_bit == LOW){
             increment_hour();
         }
     }
@@ -121,16 +152,115 @@ void adjust_clock(){
     }
 
     //Segundos
-    if(RB2_bit == LOW){
-        delay(1);
-        if(RB2_bit == LOW){
+    if(RB0_bit == LOW){
+        delay(100);
+        if(RB0_bit == LOW){
             increment_second();
         }
     }
 }
 
-void reset_timer0(){
-    //inicializa os valores de timer zero
+void increment_hour(){
+    if(hour < 23)
+        hour++;
+    else
+    {
+        hour = 0;
+        increment_day_of_month();
+    }
+}
+
+void increment_minute(){
+    if(minute < 59)
+        minute++;
+    else{
+        minute = 0;
+        increment_hour();
+    }
+}
+
+void increment_second(){
+    if(second < 59)
+        second++;
+    else{
+        second = 0;
+        increment_minute();
+    }
+}
+
+/* Funcoes :: Data */
+void set_date(){
+    //Dia do mes
+    if(RA5_bit == HIGH){
+        delay(100);
+        if(RA5_bit == HIGH && RA4_bit == LOW){
+            increment_day_of_month();
+        }else{
+            increment_day_of_week();
+        }
+    }else if(RA4_bit == HIGH){          //Mes
+        delay(100);
+        if(RA4_bit == HIGH){
+            increment_month();
+        }
+    }else if(RB3_bit == LOW){          //Ano
+        delay(100);
+        if(RB3_bit == LOW){
+            increment_year();
+        }
+    }    
+}
+
+void display_date(){
+    //dia
+    lcd_out(1, 1, format_time(day_week));    
+    lcd_out(1, 7, format_time(day_month));    
+    //separador
+    lcd_chr_cp(47);    
+    //mes
+    lcd_out_cp(format_time(month));
+    //separador
+    lcd_chr_cp(47);
+    //ano
+    inttostr(year, year_txt);
+    lcd_out_cp(ltrim(year_txt));
+}
+
+void increment_day_of_month(){
+    if(day_month < 31) //??date.
+        day_month++;
+    else{
+        day_month = 1;
+        increment_month();
+    }
+}
+
+void increment_day_of_week(){
+    if(day_week < 6)
+        day_week++;
+    else
+        day_week = 0;
+}
+
+void increment_month(){
+    if(month < 12)
+       month++;
+    else{
+        month = 1;
+        increment_year();
+    }
+}
+
+void increment_year(){
+    if(year < 2100)
+       year++;
+    else
+        year = 2017;
+}
+
+/* Funcoes auxiliares */
+void timer0_init(){    
+    //Inicializa os valores de timer zero
     //20 Mhz (frequência PIC) / 4 (prescaler) = 5Mhz
     //5Mhz / 65536 = 76,29.... ~> 5Mhz/ (65536 - X) = [time] (ps: escolhido time = 100)
     //X = 15536 (DEC) => {HEX} 3CB0 => {HEX} bit_H[3C] bit_L[B0] => {DEC} bit_H[60] bit_L[176]
@@ -138,65 +268,17 @@ void reset_timer0(){
     TMR0L = 176; //0xB0
 }
 
-void interrupt(){
-    GIE_bit = 0;
-    if (TMR0IF_bit){                 //overflow em 0-255
-        TMR0IF_bit=0;                //
-        reset_timer0();
-        counter++;                   //para cada interrupção do TIMER1 incrementa a variável contagem
-        if (counter == 100){         //counter == time ~> passou 1 segundo
-            increment_second();
-            counter = 0;
-        }
+char format_time(unsigned char time){
+    bytetostr(time, txt);
+    if(time < 10){
+        txt[1] = '0';        
     }
-    GIE_bit = 1; 
+    return ltrim(txt);
 }
 
-void setup(){
-    //SETUP microcontrolador
-    TRISA = 48; //RA4 e RA5 com entrada
-    TRISB = 15; //RB0 ..RB3
-    TRISC = 0; //saída
-    TRISD = 0; //saída
-    TRISE = 0; //saída
-    //obrigatório
-    INTCON2 = 0; //liga o resistor pull up
-    ADCON1 = 15; //Portas digitais
-    CMCON = 7; //desliga comparadores
-    
-    //Inicializa todas as portas desligadas
-    PORTA = 0; //
-    PORTB = 0; //
-    PORTC = 0; //
-    PORTD = 0; //
-    PORTE = 0; //
-
-    //LCD initialize
-    lcd_init();
-    lcd_cmd(_LCD_CLEAR);
-    lcd_cmd(_LCD_CURSOR_OFF);
-
-    //inicializa vars
-    hour = 0;
-    minute = 0;
-    second = 0;
-    timer_milliseconds = 0;
-}
-
-void loop(){
-    adjust_clock();
-    display_time();
-}
-
-void main() {
-    setup();
-
-    //configura interrupções
-    T0CON = 136;    //desliga todos os controles do tmr0 (em 16bits)
-    INTCON = 0;     //desabilita interrupções
-    reset_timer0(); //inicializa o timer0
-    TMR0IE_bit = 1; //liga interrupção do tmr0 (começa contar)
-    GIE_bit = 1;    //liga o sistema de interrupções
-
-    while(1) loop();
+void delay(unsigned int milliseconds){
+    while(milliseconds > 0){
+        delay_ms(1);
+        milliseconds--;
+    }
 }
