@@ -168,6 +168,7 @@ void set_clock(){
             increment_second();
         }
     }
+    MODE = AUTO_MODE;
 }
 
 void increment_hour(){
@@ -224,6 +225,7 @@ void set_date(){
             increment_year();
         }
     }    
+    MODE = AUTO_MODE;
 }
 
 void display_date(){
