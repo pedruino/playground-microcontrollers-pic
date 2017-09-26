@@ -1,7 +1,5 @@
 #define HIGH 1
 #define LOW 0
-#define AUTO_MODE 0
-#define SET_MODE 1
 
 //LCD Setup
 sbit LCD_RS at RE1_bit;
@@ -18,16 +16,21 @@ sbit LCD_D5_Direction at TRISB5_bit;
 sbit LCD_D6_Direction at TRISB6_bit;
 sbit LCD_D7_Direction at TRISB7_bit;
 
+//icon
+const char icon_0[] = {31,31,14,4,4,10,17,31};
+const char icon_1[] = {31,17,14,4,4,10,17,31};
+const char icon_2[] = {31,17,10,4,4,14,17,31};
+const char icon_3[] = {31,17,10,4,4,14,31,31};
 //vars
-char txt[4], year_txt[7];
+char txt[7];
 const unsigned short days_of_month[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-char* days_of_week[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+char* months[12] = {"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"};
+const char* days_of_week[7] = {"Domingo", "Segunda", "Terca  ", "Quarta ", "Quinta ", "Sexta  ", "Sabado "};
 unsigned char hour, minute, second;
 unsigned char day_month, day_week, month;
 unsigned short last_month_day;
 unsigned year;
 unsigned interrupt_counter;
-unsigned char MODE = AUTO_MODE;
 
 /* Prototypes */
 void loop();
@@ -35,22 +38,23 @@ void setup();
 
 void set_clock();
 void display_time();
-void increment_hour();
-void increment_minute();
-void increment_second();
+void increment_time();
 
 void set_date();
 void display_date();
-void increment_day_of_month();
-void increment_day_of_week();
-void increment_month();
-void increment_year();
+
+void display_icon(char pos_row, char pos_char);
+void display_temperature();  
 
 
 void timer0_init();
-char format_time(unsigned char time);
+char format_number(unsigned char number);
+char format_day(unsigned char dayweek);
+unsigned short get_last_day();
 int is_leap_year();
 void delay(unsigned milliseconds);
+
+
 
 void setup(){
     //Configuracao obrigatoria
@@ -82,13 +86,12 @@ void setup(){
     minute = 0;
     second = 0;
 
-    day_week = 0;
-    day_month = 24;
-    month = 9;
+    day_week = 1;
+    day_month = 25;
+    month = 8;
     year = 2017;
 
     interrupt_counter = 0;
-
 
     //Configuracao de interrupcoes
     T0CON = 136;    //desliga todos os controles do tmr0 (em 16bits)
@@ -97,12 +100,13 @@ void setup(){
     TMR0IE_bit = 1; //liga interrupção do tmr0 (começa contar)
     GIE_bit = 1;    //liga o sistema de interrupções
 }
-int i = 0;
+
 void loop(){
     set_date();
     set_clock();
 
-    display_date();    
+    display_date();  
+    display_temperature();  
     display_time();
 }
 
@@ -120,7 +124,7 @@ void interrupt(){
 
         interrupt_counter++;                   //para cada interrupcao do TIMER1 incrementa a variavel contagem
         if (interrupt_counter == 100){         //counter == time ~> passou 1 segundo
-            increment_second();
+            increment_time();
             interrupt_counter = 0;
         }
     }
@@ -130,160 +134,168 @@ void interrupt(){
 /* Funcoes :: Relogio */
 void display_time(){
     //horas
-    lcd_out(2, 9, format_time(hour));
+    lcd_out(2, 9, format_number(hour));
     //separador
     if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
     //minutos
-    lcd_out_cp(format_time(minute));
+    lcd_out_cp(format_number(minute));
     //separador
     if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
     //segundos
-    lcd_out_cp(format_time(second));
+    lcd_out_cp(format_number(second));
 }
 
 void set_clock(){
     //Horas
-    if(RB2_bit == LOW){
+    if(RB1_bit == LOW){
         delay(100);
-        if(RB2_bit == LOW){
-            MODE = SET_MODE;
-            increment_hour();
+        if(RB1_bit == LOW){
+            if(hour < 23)
+                hour++;
+            else            
+                hour = 0;
         }
     }
 
     //Minutos
-    if(RB1_bit == LOW){
+    if(RB2_bit == LOW){
         delay(100);
-        if(RB1_bit == LOW){
-            MODE = SET_MODE;
-            increment_minute();
+        if(RB2_bit == LOW){
+            if(minute < 59)
+                minute++;
+            else
+                minute = 0;
         }
     }
-
-    //Segundos
-    if(RB0_bit == LOW){
-        delay(100);
-        if(RB0_bit == LOW){
-            MODE = SET_MODE;
-            increment_second();
-        }
-    }
-    MODE = AUTO_MODE;
 }
 
-void increment_hour(){
-    if(hour < 23)
-        hour++;
-    else
-    {
-        hour = 0;
-        if(MODE != SET_MODE)
-            increment_day_of_month();
-    }
-}
-
-void increment_minute(){
-    if(minute < 59)
-        minute++;
-    else{
-        minute = 0;
-        if(MODE != SET_MODE)
-            increment_hour();
-    }
-}
-
-void increment_second(){
+void increment_time(){
+    //seconds
     if(second < 59)
         second++;
     else{
         second = 0;
-        if(MODE != SET_MODE)
-            increment_minute();
+        //minutes        
+        if(minute < 59)
+            minute++;
+        else{
+            minute = 0;
+            //hours
+            if(hour < 23)
+                hour++;
+            else{
+                hour = 0;
+                //days
+                if(day_month < get_last_day()){
+                    day_month++;
+                    if(day_week < 6)
+                        day_week++;
+                    else
+                        day_week = 0;
+                }else{
+                    day_month = 1;
+                    //months                    
+                    if(month < 12) 
+                        month++; 
+                    else{ 
+                        month = 1;
+                        //years
+                        if(year < 2100) 
+                            year++; 
+                        else 
+                            year = 2017;
+                    }
+                }
+            }            
+                
+        }            
     }
 }
 
 /* Funcoes :: Data */
 void set_date(){    
-    if(RA5_bit == HIGH){         //Dia
+    if(RB3_bit == LOW){         //Dia
         delay(100);
-        if(RA5_bit == HIGH){
-            MODE = SET_MODE;
-            increment_day_of_month();
+        if(RB3_bit == LOW){                        
+            if(day_month < get_last_day()){
+                day_month++;
+                if(day_week < 6)
+                    day_week++;
+                else
+                    day_week = 0;
+            }
+            else
+                day_month = 1;                
         }
     }
     if(RA4_bit == HIGH){         //Mes
         delay(100);
         if(RA4_bit == HIGH){
-            MODE = SET_MODE;
-            increment_month();
+            if(month < 11) 
+                month++; 
+            else 
+                month = 0;
         }
     }
-    if(RB3_bit == LOW){          //Ano
+    if(RA5_bit == HIGH){         //Ano
         delay(100);
-        if(RB3_bit == LOW){
-            MODE = SET_MODE;
-            increment_year();
+        if(RA5_bit == HIGH){
+            if(year < 2100) 
+                year++; 
+            else 
+                year = 2017;
         }
-    }    
-    MODE = AUTO_MODE;
+    }        
 }
 
 void display_date(){
-    //dia
-    lcd_out(1, 1, days_of_week[day_week]);    
-    lcd_out_cp(" - ");
-    lcd_out(1, 7, format_time(day_month));    
+    //dia da semana
+    lcd_out(2, 1, format_day(day_week)); 
+    //dia do mes
+    lcd_out(1, 1, format_number(day_month));
     //separador
     lcd_chr_cp(47);    
     //mes
-    lcd_out_cp(format_time(month));
+    lcd_out_cp(ltrim(months[month]));
     //separador
     lcd_chr_cp(47);
     //ano
-    inttostr(year, year_txt);
-    lcd_out_cp(ltrim(year_txt));
+    inttostr(year, txt);
+    lcd_out_cp(ltrim(txt));
+
+    //frescura
+    display_icon(1, 13);
+    //CustomChar(1, 13);
 }
 
-void increment_day_of_month(){    
-    last_month_day = days_of_month[month-1];
-    if(month == 2 && is_leap_year())
-        last_month_day  +=1;
+void display_icon(char pos_row, char pos_char){
+    char i;
+    Lcd_Cmd(64);
+    if(second % 2 == 0){
+        if(interrupt_counter < 50){
+            for (i = 0; i<=7; i++) lcd_chr_cp(icon_0[i]);
+        }
+        else{
+            for (i = 0; i<=7; i++) lcd_chr_cp(icon_1[i]);
+        }
+    }
+    else{
+        if(interrupt_counter < 50){
+            for (i = 0; i<=7; i++) lcd_chr_cp(icon_2[i]);
+        }
+        else{
+            for (i = 0; i<=7; i++) lcd_chr_cp(icon_3[i]);
+        }        
+    }    
     
-    if(day_month < last_month_day)
-    {
-        day_month++;
-        increment_day_of_week();
-    }
-    else{
-        day_month = 1;
-        if(MODE != SET_MODE)
-            increment_month();
-    }
+    Lcd_Cmd(_LCD_RETURN_HOME);
+    Lcd_Chr(pos_row, pos_char, 0);
 }
 
-void increment_day_of_week(){
-    if(day_week < 6)
-        day_week++;
-    else
-        day_week = 0;
+void display_temperature(){
+
 }
 
-void increment_month(){
-    if(month < 12)
-       month++;
-    else{
-        month = 1;
-        if(MODE != SET_MODE)
-            increment_year();
-    }
-}
-
-void increment_year(){
-    if(year < 2100)
-       year++;
-    else
-        year = 2017;
-}
 
 /* Funcoes auxiliares */
 void timer0_init(){    
@@ -295,12 +307,28 @@ void timer0_init(){
     TMR0L = 176; //0xB0
 }
 
-char format_time(unsigned char time){
-    bytetostr(time, txt);
-    if(time < 10){
+char format_number(unsigned char number){
+    bytetostr(number, txt);
+    if(number < 10){
         txt[1] = '0';        
     }
     return ltrim(txt);
+}
+
+char format_day(unsigned char dayweek){
+    static char day_txt[8];
+    const char *day_name = days_of_week[dayweek];
+    char i;
+    for(i=0; day_txt[i] = day_name[i]; i++);
+
+    return day_txt;
+}
+
+unsigned short get_last_day(){
+    last_month_day = days_of_month[month];
+    if(month == 2 && is_leap_year())
+        last_month_day  +=1;
+    return last_month_day;
 }
 
 int is_leap_year(){
