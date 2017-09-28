@@ -50,10 +50,8 @@ char txt[7];
 const unsigned short days_of_month[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 char* months[12] = {"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"};
 const char* days_of_week[7] = {"Domingo", "Segunda", "Terca  ", "Quarta ", "Quinta ", "Sexta  ", "Sabado "};
-char can_triggers_alarm;
-//unsigned char clock.hour, clock.minute, clock.second;
-//unsigned char date.day_month, date.day_week, date.month;
-unsigned short last_month_day;
+char can_triggers_alarm, resto, inteiro;
+unsigned int last_month_day;
 //unsigned date.year;
 unsigned interrupt_counter;
 /* Prototypes */
@@ -74,7 +72,6 @@ void triggers_alarm();
 void display_alarm_icon();
 
 void read_temperature();
-void display_temperature();
 
 void timer0_init();
 char format_number(unsigned char number);
@@ -82,7 +79,7 @@ char format_day(unsigned char dayweek);
 unsigned short get_last_day();
 int is_leap_year();
 void delay(unsigned milliseconds);
-void vandermonde(int read_value);
+int vandermonde(int read_value);
 
 void setup(){
     //Configuracao obrigatoria
@@ -170,9 +167,8 @@ void loop(){
     set_date();
     set_clock();
     read_temperature();
-    display_date();
     display_alarm_icon();
-    display_temperature();
+    display_date();
     display_time();
   }else{
     set_alarm();
@@ -403,20 +399,27 @@ void display_alarm_icon(){
   if(ALARM_STATUS == ON){
     const char alarm_icon[] = {0,27,14,17,21,17,14,0};
     char i;
-    lcd_cmd(64);
+    lcd_cmd(72);
     for (i = 0; i<=7; i++) lcd_chr_cp(alarm_icon[i]);
     lcd_cmd(_LCD_RETURN_HOME);
-    lcd_chr(1, 13, 0);
+    lcd_chr(1, 16, 1);
   }else
-    lcd_chr(1, 13, ' ');
+    lcd_chr(1, 16, ' ');
 }
 
 /* Funcoes :: Temperatura*/
 void read_temperature(){
-//  valor = adc_read(0);
-}
-void display_temperature(){
-
+  char i;
+  const char temp_icon[] = {28,20,28,0,7,8,8,7};
+  int raw_value = adc_read(1);          //le a entrada adc_0
+  int temperature = vandermonde(raw_value);
+  
+  lcd_out(1, 13, format_number(temperature % 100));
+  //icon
+  lcd_cmd(64);
+  for (i = 0; i<=7; i++) lcd_chr_cp(temp_icon[i]);
+  lcd_cmd(_LCD_RETURN_HOME);
+  lcd_chr(1, 15, 0);
 }
 
 /* Funcoes :: Frescura */
@@ -484,7 +487,7 @@ char format_day(unsigned char dayweek){
 
 unsigned short get_last_day(){
     last_month_day = days_of_month[date.month];
-    if(date.month == 2 && is_leap_year())
+    if(date.month == 1 && is_leap_year())
         last_month_day  +=1;
     return last_month_day;
 }
@@ -509,7 +512,7 @@ void delay(unsigned int milliseconds){
 int vandermonde(int read_value){
   int yield_value, converted_value;
   yield_value = read_value / 42;
-  converted_value = converted_value - yield_value;
+  converted_value = read_value - yield_value;
   converted_value = converted_value / 2;
   return converted_value;
 }

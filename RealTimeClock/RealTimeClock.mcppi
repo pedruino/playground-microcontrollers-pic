@@ -15,6 +15,8 @@ Value=0
 Value=2000
 [EEPROM_DEFINITION]
 Value=
+[EXPANDED_NODES]
+Count=0
 [FILES]
 Count=1
 File0=RealTimeClock.c
@@ -34,9 +36,10 @@ Count=0
 Count=0
 [SEARCH_PATH]
 Count=4
-Path0=C:\Users\Public\Documents\Mikroelektronika\mikroC PRO for PIC\Defs\
+Path0=C:\Users\Public\Documents\Mikroelektronika\mikroC PRO for PIC\defs\
 Path1=C:\Users\Public\Documents\Mikroelektronika\mikroC PRO for PIC\uses\P18\
-Path2=C:\pedro.silva\bitbucket\microcontrollers.1\RealTimeClock\
+Path2=C:\Users\pedro\Source\Repos\microcontrollers.1\RealTimeClock\
+Path3=C:\pedro.silva\bitbucket\microcontrollers.1\RealTimeClock\
 [HEADER_PATH]
 Count=0
 [HEADERS]
@@ -99,5 +102,6 @@ File50=Time
 File51=TouchPanel
 File52=Trigonometry
 File53=UART
-[EXPANDED_NODES]
-Count=0
+[EXPANDED NODES]
+Node1=Sources
+Count=1
