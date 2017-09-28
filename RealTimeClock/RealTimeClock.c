@@ -17,7 +17,16 @@ sbit LCD_D6_Direction at TRISB6_bit;
 sbit LCD_D7_Direction at TRISB7_bit;
 
 //Types
-typedef enum {CLOCK_DISPLAY, ADJUSTING_ALARM} ModeClock;
+typedef enum {
+  CLOCK_DISPLAY = 0,
+  ADJUSTING_ALARM = 1
+} ModeClock;
+
+typedef enum {
+  OFF = 0,
+  ON = 1
+} Status;
+
 typedef struct{
   unsigned char hour;
   unsigned char minute;
@@ -31,6 +40,7 @@ typedef struct{
   unsigned int year;
 } Calendar;
 
+Status ALARM_STATUS = OFF;
 ModeClock DISPLAY_MODE = CLOCK_DISPLAY;
 Time clock;
 Time alarm;
@@ -59,6 +69,7 @@ void display_date();
 
 void set_alarm();
 void display_alarm();
+void display_alarm_icon();
 
 void display_time_icon();
 void display_temperature();
@@ -100,6 +111,10 @@ void setup(){
     clock.minute = 0;
     clock.second = 0;
 
+    alarm.hour = 6;
+    alarm.minute = 0;
+    alarm.second = 0;
+
     date.day_week = 2;
     date.day_month = 26;
     date.month = 8;
@@ -116,11 +131,30 @@ void setup(){
 }
 
 void loop(){
+  if(RB0_bit == LOW){
+      char time_commit = clock.second + 2;
+      switch (DISPLAY_MODE) {
+        case ADJUSTING_ALARM:
+          while (RB0_bit == LOW){
+            if(clock.second == time_commit){
+              DISPLAY_MODE = CLOCK_DISPLAY;
+            }
+          }
+          if(clock.second < time_commit)
+            ALARM_STATUS = !ALARM_STATUS;
+        break;
+        default:
+            while(RB0_bit == LOW) delay(1);
+            DISPLAY_MODE = ADJUSTING_ALARM;
+            lcd_cmd(_LCD_CLEAR);
+      }
+  }
+
   if(DISPLAY_MODE == CLOCK_DISPLAY){
     set_date();
     set_clock();
     display_date();
-    display_time_icon();
+    display_alarm_icon();
     display_temperature();
     display_time();
   }else{
@@ -289,10 +323,10 @@ void set_alarm(){
   if(RB1_bit == LOW){
       delay(100);
       if(RB1_bit == LOW){
-          if(clock.hour < 23)
-              clock.hour++;
+          if(alarm.hour < 23)
+              alarm.hour++;
           else
-              clock.hour = 0;
+              alarm.hour = 0;
       }
   }
 
@@ -300,23 +334,45 @@ void set_alarm(){
   if(RB2_bit == LOW){
       delay(100);
       if(RB2_bit == LOW){
-          if(clock.minute < 59)
-              clock.minute++;
+          if(alarm.minute < 59)
+              alarm.minute++;
           else
-              clock.minute = 0;
+              alarm.minute = 0;
       }
   }
 }
 
 void display_alarm(){
-
+  lcd_out(1, 1, "Alarme");
+  //icon
+  display_alarm_icon();
+  //horas
+  lcd_out(2, 9, format_number(alarm.hour));
+  //separador
+  if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
+  //minutos
+  lcd_out_cp(format_number(alarm.minute));
+  //separador
+  if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
+  //segundos
+  lcd_out_cp(format_number(alarm.second));
 }
 
 /* Funcoes :: Temperatura*/
 void display_temperature(){
 
 }
-
+void display_alarm_icon(){
+  if(ALARM_STATUS == ON){
+    const char alarm_icon[] = {0,27,14,17,21,17,14,0};
+    char i;
+    lcd_cmd(64);
+    for (i = 0; i<=7; i++) lcd_chr_cp(alarm_icon[i]);
+    lcd_cmd(_LCD_RETURN_HOME);
+    lcd_chr(1, 13, 0);
+  }else
+    lcd_chr(1, 13, ' ');
+}
 /* Funcoes :: Frescura */
 void display_time_icon(){
     const char icon[4][8] =
