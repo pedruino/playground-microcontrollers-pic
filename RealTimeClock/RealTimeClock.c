@@ -50,7 +50,7 @@ char txt[7];
 const unsigned short days_of_month[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 char* months[12] = {"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"};
 const char* days_of_week[7] = {"Domingo", "Segunda", "Terca  ", "Quarta ", "Quinta ", "Sexta  ", "Sabado "};
-
+char can_triggers_alarm;
 //unsigned char clock.hour, clock.minute, clock.second;
 //unsigned char date.day_month, date.day_week, date.month;
 unsigned short last_month_day;
@@ -69,9 +69,11 @@ void display_date();
 
 void set_alarm();
 void display_alarm();
+void check_alarm();
+void triggers_alarm();
 void display_alarm_icon();
 
-void display_time_icon();
+void read_temperature();
 void display_temperature();
 
 void timer0_init();
@@ -80,6 +82,7 @@ char format_day(unsigned char dayweek);
 unsigned short get_last_day();
 int is_leap_year();
 void delay(unsigned milliseconds);
+void vandermonde(int read_value);
 
 void setup(){
     //Configuracao obrigatoria
@@ -106,20 +109,24 @@ void setup(){
     lcd_cmd(_LCD_CLEAR);
     lcd_cmd(_LCD_CURSOR_OFF);
 
+    //Inicializacao do ADC
+    adc_init();
+
     //Variaveis
-    clock.hour = 0;
-    clock.minute = 0;
-    clock.second = 0;
+    clock.hour = 12;
+    clock.minute = 00;
+    clock.second = 00;
 
-    alarm.hour = 6;
-    alarm.minute = 0;
-    alarm.second = 0;
+    alarm.hour = 12;
+    alarm.minute = 01;
+    alarm.second = 00;
 
-    date.day_week = 2;
-    date.day_month = 26;
+    date.day_week = 4;
+    date.day_month = 28;
     date.month = 8;
     date.year = 2017;
 
+    can_triggers_alarm = 0;
     interrupt_counter = 0;
 
     //Configuracao de interrupcoes
@@ -132,7 +139,8 @@ void setup(){
 
 void loop(){
   if(RB0_bit == LOW){
-      char time_commit = clock.second + 2;
+      char time_commit = clock.second + 1;
+
       switch (DISPLAY_MODE) {
         case ADJUSTING_ALARM:
           while (RB0_bit == LOW){
@@ -141,8 +149,16 @@ void loop(){
             }
           }
           if(clock.second < time_commit)
+          {
             ALARM_STATUS = !ALARM_STATUS;
+            can_triggers_alarm = 0;
+            RC0_bit = LOW;//desliga led0
+            RC1_bit = LOW;//desliga led1
+            RC2_bit = LOW;//desliga led2
+            RC3_bit = LOW;//desliga led3
+          }
         break;
+
         default:
             while(RB0_bit == LOW) delay(1);
             DISPLAY_MODE = ADJUSTING_ALARM;
@@ -153,6 +169,7 @@ void loop(){
   if(DISPLAY_MODE == CLOCK_DISPLAY){
     set_date();
     set_clock();
+    read_temperature();
     display_date();
     display_alarm_icon();
     display_temperature();
@@ -161,6 +178,8 @@ void loop(){
     set_alarm();
     display_alarm();
   }
+
+  check_alarm();
 }
 
 void main() {
@@ -293,9 +312,9 @@ void set_date(){
     if(RA5_bit == HIGH){         //Ano
         delay(100);
         if(RA5_bit == HIGH){
-            if(date.year < 2100)
-                date.year++;
-            else
+            if(date.year < 2100){
+              date.year++;
+            }else
                 date.year = 2017;
         }
     }
@@ -358,10 +377,28 @@ void display_alarm(){
   lcd_out_cp(format_number(alarm.second));
 }
 
-/* Funcoes :: Temperatura*/
-void display_temperature(){
+void check_alarm(){
+  if(!can_triggers_alarm)
+     can_triggers_alarm = (clock.hour == alarm.hour && clock.minute == alarm.minute);
 
+  if(can_triggers_alarm && ALARM_STATUS == ON)
+    triggers_alarm();
 }
+
+void triggers_alarm(){
+  if(clock.second % 2 == 0){
+    RC0_bit = HIGH;//liga led0
+    RC1_bit = HIGH;//liga led1
+    RC2_bit = HIGH;//liga led2
+    RC3_bit = HIGH;//liga led3
+  }else{
+    RC0_bit = LOW;//desliga led0
+    RC1_bit = LOW;//desliga led1
+    RC2_bit = LOW;//desliga led2
+    RC3_bit = LOW;//desliga led3
+  }
+}
+
 void display_alarm_icon(){
   if(ALARM_STATUS == ON){
     const char alarm_icon[] = {0,27,14,17,21,17,14,0};
@@ -373,6 +410,15 @@ void display_alarm_icon(){
   }else
     lcd_chr(1, 13, ' ');
 }
+
+/* Funcoes :: Temperatura*/
+void read_temperature(){
+//  valor = adc_read(0);
+}
+void display_temperature(){
+
+}
+
 /* Funcoes :: Frescura */
 void display_time_icon(){
     const char icon[4][8] =
@@ -458,4 +504,12 @@ void delay(unsigned int milliseconds){
         delay_ms(1);
         milliseconds--;
     }
+}
+
+int vandermonde(int read_value){
+  int yield_value, converted_value;
+  yield_value = read_value / 42;
+  converted_value = converted_value - yield_value;
+  converted_value = converted_value / 2;
+  return converted_value;
 }
