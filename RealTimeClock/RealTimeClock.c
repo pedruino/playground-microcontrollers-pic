@@ -314,11 +314,9 @@ void set_date(){
             if(date.year < 2100){
               date.year++;
               if(!is_leap_year())
-                date.day_week = (date.day_week + 1) % 7; 
+                date.day_week = (date.day_week + 1) % 7;
               else
-                date.day_week = (date.day_week + 2) % 7;
-              //else
-              //  date.day_week = 0;
+                date.day_week = (date.day_week + 2) % 7;              
             }else
                 date.year = 2017;
         }
@@ -422,7 +420,7 @@ void read_temperature(){
   const char temp_icon[] = {28,20,28,0,7,8,8,7};
   int raw_value = adc_read(1);          //le a entrada adc_0
   int temperature = vandermonde(raw_value);
-  
+
   lcd_out(1, 13, format_number(temperature % 100));
   //icon
   lcd_cmd(64);
