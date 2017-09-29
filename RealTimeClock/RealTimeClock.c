@@ -313,10 +313,10 @@ void set_date(){
         if(RA5_bit == HIGH){
             if(date.year < 2100){
               date.year++;
-              if(!is_leap_year())
-                date.day_week = (date.day_week + 1) % 7;
+              if(is_leap_year())
+                date.day_week = (date.day_week + 2) % 7;
               else
-                date.day_week = (date.day_week + 2) % 7;              
+                date.day_week = (date.day_week + 1) % 7;
             }else
                 date.year = 2017;
         }
