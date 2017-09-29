@@ -282,7 +282,8 @@ void increment_time(){
 
 /* Funcoes :: Data */
 void set_date(){
-    if(RB3_bit == LOW){         //Dia
+    //Day
+    if(RB3_bit == LOW){
         delay(100);
         if(RB3_bit == LOW){
             if(date.day_month < get_last_day()){
@@ -296,20 +297,28 @@ void set_date(){
                 date.day_month = 1;
         }
     }
-    if(RA4_bit == HIGH){         //Mes
+    //Month
+    if(RA4_bit == HIGH){
         delay(100);
         if(RA4_bit == HIGH){
-            if(date.month < 11)
+            if(date.month < 11){
                 date.month++;
-            else
+            }else
                 date.month = 0;
         }
     }
-    if(RA5_bit == HIGH){         //Ano
+    //Year
+    if(RA5_bit == HIGH){
         delay(100);
         if(RA5_bit == HIGH){
             if(date.year < 2100){
               date.year++;
+              if(!is_leap_year())
+                date.day_week = (date.day_week + 1) % 7; 
+              else
+                date.day_week = (date.day_week + 2) % 7;
+              //else
+              //  date.day_week = 0;
             }else
                 date.year = 2017;
         }
