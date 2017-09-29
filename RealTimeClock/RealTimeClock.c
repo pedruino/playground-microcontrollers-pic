@@ -16,7 +16,7 @@ sbit LCD_D5_Direction at TRISB5_bit;
 sbit LCD_D6_Direction at TRISB6_bit;
 sbit LCD_D7_Direction at TRISB7_bit;
 
-//Types
+/* Types */
 typedef enum {
   CLOCK_DISPLAY = 0,
   ADJUSTING_ALARM = 1
@@ -40,20 +40,20 @@ typedef struct{
   unsigned int year;
 } Calendar;
 
+/* Variables */
 Status ALARM_STATUS = OFF;
 ModeClock DISPLAY_MODE = CLOCK_DISPLAY;
 Time clock;
 Time alarm;
 Calendar date;
-//vars
 char txt[7];
 const unsigned short days_of_month[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 char* months[12] = {"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"};
 const char* days_of_week[7] = {"Domingo", "Segunda", "Terca  ", "Quarta ", "Quinta ", "Sexta  ", "Sabado "};
-char can_triggers_alarm, resto, inteiro;
+char can_triggers_alarm;
 unsigned int last_month_day;
-//unsigned date.year;
 unsigned interrupt_counter;
+
 /* Prototypes */
 void loop();
 void setup();
@@ -81,6 +81,7 @@ int is_leap_year();
 void delay(unsigned milliseconds);
 int vandermonde(int read_value);
 
+/* Program */
 void setup(){
     //Configuracao obrigatoria
     INTCON2 = 0;  //Liga o resistor pull up
@@ -199,7 +200,7 @@ void interrupt(){
     GIE_bit = 1;
 }
 
-/* Funcoes :: Relogio */
+/* Functions :: Clock */
 void display_time(){
     //horas
     lcd_out(2, 9, format_number(clock.hour));
@@ -280,7 +281,7 @@ void increment_time(){
     }
 }
 
-/* Funcoes :: Data */
+/* Functions :: Date */
 void set_date(){
     //Day
     if(RB3_bit == LOW){
@@ -339,7 +340,7 @@ void display_date(){
     lcd_out_cp(ltrim(txt));
 }
 
-/* Funcoes :: Alarm */
+/* Functions :: Alarm */
 void set_alarm(){
   //Horas
   if(RB1_bit == LOW){
@@ -414,7 +415,7 @@ void display_alarm_icon(){
     lcd_chr(1, 16, ' ');
 }
 
-/* Funcoes :: Temperatura*/
+/* Functions :: Temperature*/
 void read_temperature(){
   char i;
   const char temp_icon[] = {28,20,28,0,7,8,8,7};
@@ -429,43 +430,7 @@ void read_temperature(){
   lcd_chr(1, 15, 0);
 }
 
-/* Funcoes :: Frescura */
-void display_time_icon(){
-    const char icon[4][8] =
-    {
-      {31,31,14,4,4,10,17,31},
-      {31,17,14,4,4,10,17,31},
-      {31,17,10,4,4,14,17,31},
-      {31,17,10,4,4,14,31,31}
-    };
-
-    char i, pos_row, pos_char;
-    pos_row = 1;
-    pos_char = 13;
-
-    Lcd_Cmd(64);
-    if(clock.second % 2 == 0){
-        if(interrupt_counter < 50){
-            for (i = 0; i<=7; i++) lcd_chr_cp(icon[0][i]);
-        }
-        else{
-            for (i = 0; i<=7; i++) lcd_chr_cp(icon[1][i]);
-        }
-    }
-    else{
-        if(interrupt_counter < 50){
-            for (i = 0; i<=7; i++) lcd_chr_cp(icon[2][i]);
-        }
-        else{
-            for (i = 0; i<=7; i++) lcd_chr_cp(icon[3][i]);
-        }
-    }
-
-    lcd_cmd(_LCD_RETURN_HOME);
-    lcd_chr(pos_row, pos_char, 0);
-}
-
-/* Funcoes auxiliares */
+/* Functions :: Helpers */
 void timer0_init(){
     //Inicializa os valores de timer zero
     //20 Mhz (frequência PIC) / 4 (prescaler) = 5Mhz
