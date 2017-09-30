@@ -78,61 +78,62 @@ char format_number(unsigned char number);
 char format_day(unsigned char dayweek);
 unsigned short get_last_day();
 int is_leap_year();
+int get_day_of_week(Calendar date);
 void delay(unsigned milliseconds);
 int vandermonde(int read_value);
 
 /* Program */
 void setup(){
-    //Configuracao obrigatoria
-    INTCON2 = 0;  //Liga o resistor pull up
-    ADCON1 = 15;  //Portas digitais
-    CMCON = 7;    //Desliga comparadores
+    //Required settings
+    INTCON2 = 0;  //Turn on pull up resistor
+    ADCON1 = 15;  //Digital ports
+    CMCON = 7;    //Turn off comparers
 
-    //Setup do PIC (baseado na configuracao da placa)
-    TRISA = 48;   //RA4 e RA5 com entrada
+    //Setup base on PIC18F4520 (UniFtec)
+    TRISA = 48;   //RA4 & RA5 as INPUT
     TRISB = 15;   //RB0 ..RB3
-    TRISC = 0;    //saida
-    TRISD = 0;    //saida
-    TRISE = 0;    //saida
+    TRISC = 0;    //output
+    TRISD = 0;    //output
+    TRISE = 0;    //output
 
-    //Inicializa todas as portas desligadas
-    PORTA = 0; //
-    PORTB = 0; //
-    PORTC = 0; //
-    PORTD = 0; //
-    PORTE = 0; //
+    //Init alls ports off
+    PORTA = LOW; //safe
+    PORTB = LOW; //safe
+    PORTC = LOW; //safe
+    PORTD = LOW; //safe
+    PORTE = LOW; //safe
 
-    //Incializacao do LCD
+    //Init LCD
     lcd_init();
     lcd_cmd(_LCD_CLEAR);
     lcd_cmd(_LCD_CURSOR_OFF);
 
-    //Inicializacao do ADC
+    //Init ADC
     adc_init();
 
-    //Variaveis
+    //Init others variables
     clock.hour = 12;
     clock.minute = 00;
     clock.second = 00;
 
-    alarm.hour = 12;
-    alarm.minute = 01;
+    alarm.hour = 06;
+    alarm.minute = 00;
     alarm.second = 00;
 
-    date.day_week = 4;
-    date.day_month = 28;
+    date.day_month = 30;
     date.month = 8;
     date.year = 2017;
+    date.day_week = get_day_of_week(date);
 
     can_triggers_alarm = 0;
     interrupt_counter = 0;
 
-    //Configuracao de interrupcoes
-    T0CON = 136;    //desliga todos os controles do tmr0 (em 16bits)
-    INTCON = 0;     //desabilita interrupções
-    timer0_init();  //inicializa o timer0
-    TMR0IE_bit = 1; //liga interrupção do tmr0 (começa contar)
-    GIE_bit = 1;    //liga o sistema de interrupções
+    //Setup interrupt
+    T0CON = 136;    //turn off all TMR0 controls (16bits)
+    INTCON = 0;     //disable interruptions
+    timer0_init();  //initialize TMR0
+    TMR0IE_bit = 1; //enable TMR0 (start counter)
+    GIE_bit = 1;    //enable global interruptions
 }
 
 void loop(){
@@ -150,10 +151,10 @@ void loop(){
           {
             ALARM_STATUS = !ALARM_STATUS;
             can_triggers_alarm = 0;
-            RC0_bit = LOW;//desliga led0
-            RC1_bit = LOW;//desliga led1
-            RC2_bit = LOW;//desliga led2
-            RC3_bit = LOW;//desliga led3
+            RC0_bit = LOW;//turn off led0
+            RC1_bit = LOW;//turn off led1
+            RC2_bit = LOW;//turn off led2
+            RC3_bit = LOW;//turn off led3
           }
         break;
 
@@ -191,8 +192,8 @@ void interrupt(){
 
         timer0_init();
 
-        interrupt_counter++;                   //para cada interrupcao do TIMER1 incrementa a variavel contagem
-        if (interrupt_counter == 100){         //counter == time ~> passou 1 segundo
+        interrupt_counter++;            //for each TMR0 interrupt
+        if (interrupt_counter == 100){  //counter == {time} ~> 1sec elapsed
             increment_time();
             interrupt_counter = 0;
         }
@@ -202,20 +203,20 @@ void interrupt(){
 
 /* Functions :: Clock */
 void display_time(){
-    //horas
+    //hours
     lcd_out(2, 9, format_number(clock.hour));
-    //separador
+    //separator
     if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
-    //minutos
+    //minutes
     lcd_out_cp(format_number(clock.minute));
-    //separador
+    //separator
     if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
-    //segundos
+    //seconds
     lcd_out_cp(format_number(clock.second));
 }
 
 void set_clock(){
-    //Horas
+    //Hour
     if(RB1_bit == LOW){
         delay(100);
         if(RB1_bit == LOW){
@@ -226,7 +227,7 @@ void set_clock(){
         }
     }
 
-    //Minutos
+    //Minute
     if(RB2_bit == LOW){
         delay(100);
         if(RB2_bit == LOW){
@@ -276,7 +277,6 @@ void increment_time(){
                     }
                 }
             }
-
         }
     }
 }
@@ -287,15 +287,12 @@ void set_date(){
     if(RB3_bit == LOW){
         delay(100);
         if(RB3_bit == LOW){
-            if(date.day_month < get_last_day()){
+            if(date.day_month < get_last_day())
                 date.day_month++;
-                if(date.day_week < 6)
-                    date.day_week++;
-                else
-                    date.day_week = 0;
-            }
             else
                 date.day_month = 1;
+
+            date.day_week = get_day_of_week(date);
         }
     }
     //Month
@@ -304,8 +301,11 @@ void set_date(){
         if(RA4_bit == HIGH){
             if(date.month < 11){
                 date.month++;
+                while (date.day_month > get_last_day())
+                  date.day_month--;
             }else
-                date.month = 0;
+              date.month = 0;
+            date.day_week = get_day_of_week(date);
         }
     }
     //Year
@@ -314,35 +314,34 @@ void set_date(){
         if(RA5_bit == HIGH){
             if(date.year < 2100){
               date.year++;
-              if(is_leap_year())
-                date.day_week = (date.day_week + 2) % 7;
-              else
-                date.day_week = (date.day_week + 1) % 7;
+              if(!is_leap_year() && date.day_month > get_last_day())
+                  date.day_month--;
             }else
                 date.year = 2017;
+            date.day_week = get_day_of_week(date);
         }
     }
 }
 
 void display_date(){
-    //dia da semana
+    //Day of Week
     lcd_out(2, 1, format_day(date.day_week));
-    //dia do mes
+    //Day of Month
     lcd_out(1, 1, format_number(date.day_month));
-    //separador
+    //separator
     lcd_chr_cp(47);
-    //mes
+    //Month
     lcd_out_cp(ltrim(months[date.month]));
-    //separador
+    //separator
     lcd_chr_cp(47);
-    //ano
+    //Year
     inttostr(date.year, txt);
     lcd_out_cp(ltrim(txt));
 }
 
 /* Functions :: Alarm */
 void set_alarm(){
-  //Horas
+  //Hour
   if(RB1_bit == LOW){
       delay(100);
       if(RB1_bit == LOW){
@@ -352,8 +351,7 @@ void set_alarm(){
               alarm.hour = 0;
       }
   }
-
-  //Minutos
+  //Minute
   if(RB2_bit == LOW){
       delay(100);
       if(RB2_bit == LOW){
@@ -369,15 +367,15 @@ void display_alarm(){
   lcd_out(1, 1, "Alarme");
   //icon
   display_alarm_icon();
-  //horas
+  //hours
   lcd_out(2, 9, format_number(alarm.hour));
-  //separador
+  //separator
   if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
-  //minutos
+  //minutes
   lcd_out_cp(format_number(alarm.minute));
-  //separador
+  //separator
   if(interrupt_counter > 40)  lcd_chr_cp(':');    else    lcd_chr_cp(' ');
-  //segundos
+  //seconds
   lcd_out_cp(format_number(alarm.second));
 }
 
@@ -391,15 +389,15 @@ void check_alarm(){
 
 void triggers_alarm(){
   if(clock.second % 2 == 0){
-    RC0_bit = HIGH;//liga led0
-    RC1_bit = HIGH;//liga led1
-    RC2_bit = HIGH;//liga led2
-    RC3_bit = HIGH;//liga led3
+    RC0_bit = HIGH;//turn ON led0
+    RC1_bit = HIGH;//turn ON led1
+    RC2_bit = HIGH;//turn ON led2
+    RC3_bit = HIGH;//turn ON led3
   }else{
-    RC0_bit = LOW;//desliga led0
-    RC1_bit = LOW;//desliga led1
-    RC2_bit = LOW;//desliga led2
-    RC3_bit = LOW;//desliga led3
+    RC0_bit = LOW;//turn OFF led0
+    RC1_bit = LOW;//turn OFF led1
+    RC2_bit = LOW;//turn OFF led2
+    RC3_bit = LOW;//turn OFF led3
   }
 }
 
@@ -417,12 +415,16 @@ void display_alarm_icon(){
 
 /* Functions :: Temperature*/
 void read_temperature(){
-  char i;
+  char i, temperature;
   const char temp_icon[] = {28,20,28,0,7,8,8,7};
-  int raw_value = adc_read(1);          //le a entrada adc_0
-  int temperature = vandermonde(raw_value);
 
-  lcd_out(1, 13, format_number(temperature % 100));
+  if(interrupt_counter == 0){
+    int raw_value = adc_read(1);
+    int converted_value = vandermonde(raw_value);
+    temperature = converted_value % 100;
+  }
+
+  lcd_out(1, 13, format_number(temperature));
   //icon
   lcd_cmd(64);
   for (i = 0; i<=7; i++) lcd_chr_cp(temp_icon[i]);
@@ -432,9 +434,9 @@ void read_temperature(){
 
 /* Functions :: Helpers */
 void timer0_init(){
-    //Inicializa os valores de timer zero
-    //20 Mhz (frequência PIC) / 4 (prescaler) = 5Mhz
-    //5Mhz / 65536 = 76,29.... ~> 5Mhz/ (65536 - X) = [time] (ps: escolhido time = 100)
+    //Initialize TMR0 with values
+    //20 Mhz (freq PIC) / 4 (prescaler) = 5Mhz
+    //5Mhz / 65536 = 76,29.... ~> 5Mhz/ (65536 - X) = [time] (ps: choosed time = 100)
     //X = 15536 (DEC) => {HEX} 3CB0 => {HEX} bit_H[3C] bit_L[B0] => {DEC} bit_H[60] bit_L[176]
     TMR0H = 60;  //0x3C
     TMR0L = 176; //0xB0
@@ -472,6 +474,17 @@ int is_leap_year(){
         return 1;
     }
     return 0;
+}
+
+/* Sakamoto's method */
+int get_day_of_week(Calendar date){//1 <= m <= 12,  y > 1752 (in the U.K.)
+  char m = date.month+1;
+  char d = date.day_month;
+  int y = date.year;
+
+  static int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+  y -= m < 3;
+  return (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
 }
 
 void delay(unsigned int milliseconds){
